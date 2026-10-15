@@ -1,0 +1,23 @@
+# Secrets: never commit the real .env (use .env.example)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+.claude/
+
+# Note: data/campus_customs.db and data/campus_customs_new.db ARE committed on purpose,
+# so graders can run the app (the assignment asks for both).

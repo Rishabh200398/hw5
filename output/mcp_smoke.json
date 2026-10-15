@@ -1,0 +1,451 @@
+{
+  "description": "MCP smoke test of the campus-customs server. Each step is a prompt typed to the vibe coder, the tool it called through .mcp.json, the exact tool output, and an SQL check against the database.",
+  "server": "campus-customs (mcp_server/server.py via .mcp.json, stdio)",
+  "database": "data/campus_customs_new.db",
+  "run_date_real": "2026-10-10",
+  "shop_today": "2026-08-31",
+  "start_state": "data/campus_customs_new.db was a fresh copy of data/campus_customs.db (byte-identical) before the run.",
+  "summary": {
+    "tool_calls": 12,
+    "all_match_database": true
+  },
+  "tests": [
+    {
+      "step": 1,
+      "prompt": "Use check_stock for CC-TEE-WHITE size S",
+      "tool": "campus-customs.check_stock",
+      "arguments": {
+        "sku": "CC-TEE-WHITE",
+        "size": "S"
+      },
+      "tool_output": {
+        "sku": "CC-TEE-WHITE",
+        "name": "Classic Bulldog Tee",
+        "size": "S",
+        "qty": 0,
+        "location": "Aisle B",
+        "qty_needed": 1,
+        "shortfall": 1,
+        "in_stock": false
+      },
+      "what_it_shows": "Ticket #101: tee size S is out of stock (short 1).",
+      "db_check": {
+        "database": "data/campus_customs.db (identical to campus_customs_new.db before the run)",
+        "sql": "SELECT sku, name, size, qty, location FROM inventory WHERE sku='CC-TEE-WHITE' AND size='S'",
+        "result": [
+          {
+            "sku": "CC-TEE-WHITE",
+            "name": "Classic Bulldog Tee",
+            "size": "S",
+            "qty": 0,
+            "location": "Aisle B"
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 2,
+      "prompt": "Use check_stock for CC-HOOD-NAVY size M with qty_needed 20",
+      "tool": "campus-customs.check_stock",
+      "arguments": {
+        "sku": "CC-HOOD-NAVY",
+        "size": "M",
+        "qty_needed": 20
+      },
+      "tool_output": {
+        "sku": "CC-HOOD-NAVY",
+        "name": "Basic Hoodie Big Yale",
+        "size": "M",
+        "qty": 8,
+        "location": "Aisle A",
+        "qty_needed": 20,
+        "shortfall": 12,
+        "in_stock": false
+      },
+      "what_it_shows": "Ticket #103: only 8 size M hoodies for a 20-unit order (short 12).",
+      "db_check": {
+        "database": "data/campus_customs.db (identical to campus_customs_new.db before the run)",
+        "sql": "SELECT sku, name, size, qty, location FROM inventory WHERE sku='CC-HOOD-NAVY' AND size='M'",
+        "result": [
+          {
+            "sku": "CC-HOOD-NAVY",
+            "name": "Basic Hoodie Big Yale",
+            "size": "M",
+            "qty": 8,
+            "location": "Aisle A"
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 3,
+      "prompt": "Use check_stock for CC-HAT-BLUE size OS",
+      "tool": "campus-customs.check_stock",
+      "arguments": {
+        "sku": "CC-HAT-BLUE",
+        "size": "OS"
+      },
+      "tool_output": {
+        "sku": "CC-HAT-BLUE",
+        "name": "Yale Cap",
+        "size": "OS",
+        "qty": 40,
+        "location": "Aisle C",
+        "qty_needed": 1,
+        "shortfall": 0,
+        "in_stock": true
+      },
+      "what_it_shows": "In-stock case: 40 caps on hand.",
+      "db_check": {
+        "database": "data/campus_customs.db (identical to campus_customs_new.db before the run)",
+        "sql": "SELECT sku, name, size, qty, location FROM inventory WHERE sku='CC-HAT-BLUE' AND size='OS'",
+        "result": [
+          {
+            "sku": "CC-HAT-BLUE",
+            "name": "Yale Cap",
+            "size": "OS",
+            "qty": 40,
+            "location": "Aisle C"
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 4,
+      "prompt": "Use check_stock for CC-HOOD-NAVY size XXL",
+      "tool": "campus-customs.check_stock",
+      "arguments": {
+        "sku": "CC-HOOD-NAVY",
+        "size": "XXL"
+      },
+      "tool_output": {
+        "error": "CC-HOOD-NAVY size XXL is not in the inventory."
+      },
+      "what_it_shows": "No invented data: a size that isn't in the database returns an error, not a guess.",
+      "db_check": {
+        "database": "data/campus_customs.db (identical to campus_customs_new.db before the run)",
+        "sql": "SELECT * FROM inventory WHERE sku='CC-HOOD-NAVY' AND size='XXL'",
+        "result": [],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 5,
+      "prompt": "Use check_vendor_can_ship for vendor 1",
+      "tool": "campus-customs.check_vendor_can_ship",
+      "arguments": {
+        "vendor_id": 1
+      },
+      "tool_output": {
+        "id": 1,
+        "name": "Bulldog Print Co",
+        "specialty": "apparel reprint",
+        "lead_days": 5,
+        "today": "2026-08-31",
+        "can_ship": false,
+        "blocked_by_open_invoices": [
+          {
+            "id": 501,
+            "vendor_id": 1,
+            "amount": 840,
+            "due_date": "2026-08-28",
+            "status": "open",
+            "description": "Rush reprint CC-TEE-WHITE S",
+            "days_overdue": 3
+          }
+        ],
+        "arrival_if_ordered_today": "2026-09-05"
+      },
+      "what_it_shows": "Tickets #101/#103: Bulldog Print Co is blocked by open invoice 501 ($840, 3 days overdue).",
+      "db_check": {
+        "database": "data/campus_customs.db (identical to campus_customs_new.db before the run)",
+        "sql": "SELECT v.name, v.lead_days, i.id AS invoice_id, i.amount, i.due_date, i.status, d.date_today FROM vendors v JOIN invoices i ON i.vendor_id = v.id AND i.status = 'open' CROSS JOIN desk d WHERE v.id = 1",
+        "result": [
+          {
+            "name": "Bulldog Print Co",
+            "lead_days": 5,
+            "invoice_id": 501,
+            "amount": 840.0,
+            "due_date": "2026-08-28",
+            "status": "open",
+            "date_today": "2026-08-31"
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 6,
+      "prompt": "Use check_vendor_can_ship for vendor 2",
+      "tool": "campus-customs.check_vendor_can_ship",
+      "arguments": {
+        "vendor_id": 2
+      },
+      "tool_output": {
+        "id": 2,
+        "name": "Elm City Gifts",
+        "specialty": "mugs and small goods",
+        "lead_days": 3,
+        "today": "2026-08-31",
+        "can_ship": true,
+        "blocked_by_open_invoices": [],
+        "arrival_if_ordered_today": "2026-09-03"
+      },
+      "what_it_shows": "Unblocked case: no open invoices, arrival = 2026-08-31 + 3 days.",
+      "db_check": {
+        "database": "data/campus_customs.db (identical to campus_customs_new.db before the run)",
+        "sql": "SELECT v.name, v.lead_days, (SELECT COUNT(*) FROM invoices WHERE vendor_id = 2 AND status = 'open') AS open_invoices FROM vendors v WHERE v.id = 2",
+        "result": [
+          {
+            "name": "Elm City Gifts",
+            "lead_days": 3,
+            "open_invoices": 0
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 7,
+      "prompt": "Use make_payment to pay invoice 501 with no approver",
+      "tool": "campus-customs.make_payment",
+      "arguments": {
+        "kind": "invoice",
+        "ref_id": 501,
+        "approved_by": ""
+      },
+      "tool_output": {
+        "error": "Refused: a human approver is required for every payment."
+      },
+      "what_it_shows": "Safety: payments without a human approver are refused.",
+      "db_check": {
+        "note": "Refused before touching the database.",
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 8,
+      "prompt": "Use make_payment to pay invoice 501, approved by Rishabh",
+      "tool": "campus-customs.make_payment",
+      "arguments": {
+        "kind": "invoice",
+        "ref_id": 501,
+        "approved_by": "Rishabh"
+      },
+      "tool_output": {
+        "paid": true,
+        "payment": {
+          "id": 1,
+          "kind": "invoice",
+          "ref_id": 501,
+          "amount": 840,
+          "account": "checking",
+          "paid_at": "2026-08-31",
+          "approved_by": "Rishabh"
+        },
+        "invoice": {
+          "id": 501,
+          "vendor_id": 1,
+          "amount": 840,
+          "due_date": "2026-08-28",
+          "status": "paid",
+          "description": "Rush reprint CC-TEE-WHITE S"
+        },
+        "cash": {
+          "name": "checking",
+          "balance": 2560,
+          "date": "2026-08-31"
+        }
+      },
+      "what_it_shows": "Ticket #101: invoice 501 paid with approval; $3,400 - $840 = $2,560.",
+      "db_check": {
+        "database": "data/campus_customs_new.db (after the run)",
+        "sql": "SELECT (SELECT status FROM invoices WHERE id = 501) AS invoice_501_status, (SELECT approved_by FROM payments WHERE id = 1) AS payment_1_approved_by, (SELECT amount FROM payments WHERE id = 1) AS payment_1_amount",
+        "result": [
+          {
+            "invoice_501_status": "paid",
+            "payment_1_approved_by": "Rishabh",
+            "payment_1_amount": 840.0
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 9,
+      "prompt": "Use check_vendor_can_ship for vendor 1 (after paying invoice 501)",
+      "tool": "campus-customs.check_vendor_can_ship",
+      "arguments": {
+        "vendor_id": 1
+      },
+      "tool_output": {
+        "id": 1,
+        "name": "Bulldog Print Co",
+        "specialty": "apparel reprint",
+        "lead_days": 5,
+        "today": "2026-08-31",
+        "can_ship": true,
+        "blocked_by_open_invoices": [],
+        "arrival_if_ordered_today": "2026-09-05"
+      },
+      "what_it_shows": "Paying 501 unblocks Bulldog Print Co, so the tee (#101) and hoodie (#103) restocks can ship, arriving 2026-09-05.",
+      "db_check": {
+        "database": "data/campus_customs_new.db (after the run)",
+        "sql": "SELECT COUNT(*) AS open_invoices FROM invoices WHERE vendor_id = 1 AND status = 'open'",
+        "result": [
+          {
+            "open_invoices": 0
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 10,
+      "prompt": "Use make_payment to pay invoice 501 again, approved by Rishabh",
+      "tool": "campus-customs.make_payment",
+      "arguments": {
+        "kind": "invoice",
+        "ref_id": 501,
+        "approved_by": "Rishabh"
+      },
+      "tool_output": {
+        "error": "Invoice 501 is 'paid', not open."
+      },
+      "what_it_shows": "Safety: an invoice can't be paid twice.",
+      "db_check": {
+        "note": "Refused before touching the database.",
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 11,
+      "prompt": "Use make_payment to pay rent for lease 1, approved by Rishabh",
+      "tool": "campus-customs.make_payment",
+      "arguments": {
+        "kind": "rent",
+        "ref_id": 1,
+        "approved_by": "Rishabh"
+      },
+      "tool_output": {
+        "paid": true,
+        "payment": {
+          "id": 2,
+          "kind": "rent",
+          "ref_id": 1,
+          "amount": 2400,
+          "account": "checking",
+          "paid_at": "2026-08-31",
+          "approved_by": "Rishabh"
+        },
+        "lease": {
+          "id": 1,
+          "space_name": "Chapel Street shop",
+          "landlord": "Elm City Properties",
+          "monthly_rent": 2400,
+          "next_due": "2026-10-02",
+          "notes": null
+        },
+        "cash": {
+          "name": "checking",
+          "balance": 160,
+          "date": "2026-08-31"
+        }
+      },
+      "what_it_shows": "Ticket #102: rent paid with approval; $2,560 - $2,400 = $160; next_due moved 2026-09-02 -> 2026-10-02.",
+      "db_check": {
+        "database": "data/campus_customs_new.db (after the run)",
+        "sql": "SELECT (SELECT next_due FROM leases WHERE id = 1) AS lease_1_next_due, (SELECT amount FROM payments WHERE id = 2) AS payment_2_amount, (SELECT balance FROM cash_accounts WHERE name = 'checking') AS checking_balance",
+        "result": [
+          {
+            "lease_1_next_due": "2026-10-02",
+            "payment_2_amount": 2400.0,
+            "checking_balance": 160.0
+          }
+        ],
+        "matches_tool_output": true
+      }
+    },
+    {
+      "step": 12,
+      "prompt": "Use make_payment to pay rent for lease 1 again, approved by Rishabh",
+      "tool": "campus-customs.make_payment",
+      "arguments": {
+        "kind": "rent",
+        "ref_id": 1,
+        "approved_by": "Rishabh"
+      },
+      "tool_output": {
+        "error": "Refused: not enough cash — balances cannot go negative.",
+        "amount": 2400,
+        "balance": 160,
+        "short_by": 2240
+      },
+      "what_it_shows": "Safety: no negative balances ($160 can't cover $2,400).",
+      "db_check": {
+        "database": "data/campus_customs_new.db (after the run)",
+        "sql": "SELECT (SELECT balance FROM cash_accounts WHERE name = 'checking') AS checking_balance, (SELECT COUNT(*) FROM payments) AS payment_rows",
+        "result": [
+          {
+            "checking_balance": 160.0,
+            "payment_rows": 2
+          }
+        ],
+        "matches_tool_output": true
+      }
+    }
+  ],
+  "db_state_after_run": {
+    "cash_accounts": [
+      {
+        "name": "checking",
+        "balance": 160.0,
+        "date": "2026-08-31"
+      }
+    ],
+    "invoices": [
+      {
+        "id": 501,
+        "vendor_id": 1,
+        "amount": 840.0,
+        "due_date": "2026-08-28",
+        "status": "paid",
+        "description": "Rush reprint CC-TEE-WHITE S"
+      }
+    ],
+    "leases": [
+      {
+        "id": 1,
+        "space_name": "Chapel Street shop",
+        "landlord": "Elm City Properties",
+        "monthly_rent": 2400.0,
+        "next_due": "2026-10-02",
+        "notes": null
+      }
+    ],
+    "payments": [
+      {
+        "id": 1,
+        "kind": "invoice",
+        "ref_id": 501,
+        "amount": 840.0,
+        "account": "checking",
+        "paid_at": "2026-08-31",
+        "approved_by": "Rishabh"
+      },
+      {
+        "id": 2,
+        "kind": "rent",
+        "ref_id": 1,
+        "amount": 2400.0,
+        "account": "checking",
+        "paid_at": "2026-08-31",
+        "approved_by": "Rishabh"
+      }
+    ]
+  },
+  "reset_after_run": "Working copy reset with: cp data/campus_customs.db data/campus_customs_new.db"
+}

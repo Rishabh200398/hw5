@@ -1,0 +1,6 @@
+# One environment for the MCP server and the FastAPI backend.
+fastmcp>=2.0.0
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic-ai-slim[openai,mcp]>=2.45
